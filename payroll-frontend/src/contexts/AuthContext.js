@@ -24,7 +24,21 @@ export const AuthProvider = ({ children }) => {
         return;
       }
       setUser(session.user);
-      setRole('admin'); // Hardcode role
+      // Try to load role from `user_roles` table instead of hardcoding
+      try {
+        const { data: roleData, error: roleError } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', session.user.id)
+          .single();
+        if (roleError || !roleData) {
+          setRole(null);
+        } else {
+          setRole(roleData.role ?? null);
+        }
+      } catch (err) {
+        setRole(null);
+      }
       setLoading(false);
     };
     getInitialSession();
@@ -32,7 +46,21 @@ export const AuthProvider = ({ children }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        setRole('admin');
+        // Load role for the signed-in user
+        try {
+          const { data: roleData, error: roleError } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', session.user.id)
+            .single();
+          if (roleError || !roleData) {
+            setRole(null);
+          } else {
+            setRole(roleData.role ?? null);
+          }
+        } catch (err) {
+          setRole(null);
+        }
       } else {
         setRole(null);
         setLoading(false);
